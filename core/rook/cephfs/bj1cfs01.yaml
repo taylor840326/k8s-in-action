@@ -80,6 +80,7 @@ spec:
       #  podAffinity:
       tolerations:
         - operator: Exists
+          effect: NoSchedule
       podAntiAffinity:
         preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100

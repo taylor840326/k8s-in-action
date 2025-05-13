@@ -8,6 +8,7 @@ csiConfig:
 provisioner:
   tolerations:
     - operator: Exists
+      effect: NoSchedule
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
@@ -18,5 +19,6 @@ provisioner:
 nodeplugin:
   tolerations:
     - operator: Exists
+      effect: NoSchedule
 readAffinity:
   enabled: true

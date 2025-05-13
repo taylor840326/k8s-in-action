@@ -17,7 +17,9 @@ controller:
                 operator: Exists
   tolerations:
     - operator: Exists
+      effect: NoSchedule
   admissionWebhooks:
     patch:
       tolerations:
         - operator: Exists
+          effect: NoSchedule

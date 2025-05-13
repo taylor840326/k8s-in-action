@@ -8,6 +8,7 @@ controller:
                 operator: Exists
   tolerations:
     - operator: Exists
+      effect: NoSchedule
 speaker:
   affinity:
     nodeAffinity:
@@ -18,3 +19,4 @@ speaker:
                 operator: Exists
   tolerations:
     - operator: Exists
+      effect: NoSchedule

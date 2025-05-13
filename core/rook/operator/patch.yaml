@@ -7,8 +7,10 @@ data:
   CSI_PROVISIONER_NODE_AFFINITY: "node-role.kubernetes.io/control-plane"
   CSI_PROVISIONER_TOLERATIONS: |
     - operator: Exists
+      effect: NoSchedule
   CSI_PLUGIN_TOLERATIONS: |
     - operator: Exists
+      effect: NoSchedule
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -17,3 +19,8 @@ metadata:
   namespace: rook-ceph
 spec:
   replicas: 2
+  template:
+    spec:
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
