@@ -1,35 +1,48 @@
-# Cert Manager
+# [Cert Manager](https://cert-manager.io/docs/)
 
 > GA
 
-> https://cert-manager.io/docs/
+## 部署
 
-- 修改 `certs/clusterissuer.yaml` 中的 email 为自己的邮箱地址
+```sh
+helmwave up --build
 
-- 部署
+# 等待所有 pod 就绪
+kubectl wait -n cert-manager --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager
+```
 
-  ```sh
-  helmwave up --build
-  ```
+修改 [certs/clusterissuer.yaml](./certs/clusterissuer.yaml) 中的 email 为自己的邮箱地址, 然后部署证书签发
 
-- 测试
+```bash
+kubectl apply -k issuer/
+```
 
-  修改 `ingress.yaml` 中的 `hosts` 和 `host` 为实际 DNS 域名
+## 测试
 
-  ```sh
-  # 部署
-  kubectl apply -k tests
+修改 [tests/ingress.yaml](./tests/ingress.yaml) 中的 `hosts` 和 `host` 为实际 DNS 域名
 
-  # 访问 https://kuard.play.example.com
+```sh
+# 部署
+kubectl apply -k tests
 
-  # 卸载
-  kubectl delete -k tests
-  ```
+# 访问 https://kuard.play.example.com
 
-  可以通过查看签名过程
+# 卸载
+kubectl delete -k tests
+```
 
-  ```sh
-  kubectl get ing
-  kubectl get cert
-  kubectl get challenges
-  ```
+可以通过查看签名过程
+
+```sh
+kubectl get ing
+kubectl get cert
+kubectl get challenges
+```
+
+## 卸载
+
+```sh
+kubectl delete -k issuer/
+
+helmwave down
+```
