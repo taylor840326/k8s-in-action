@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rook-ceph-operator-config
+  namespace: rook-ceph
+data:
+  CSI_PROVISIONER_NODE_AFFINITY: "node-role.kubernetes.io/control-plane"
+  CSI_PROVISIONER_TOLERATIONS: |
+    - operator: Exists
+  CSI_PLUGIN_TOLERATIONS: |
+    - operator: Exists
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rook-ceph-operator
+  namespace: rook-ceph
+spec:
+  replicas: 2

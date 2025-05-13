@@ -12,7 +12,7 @@ metadata:
   namespace: rook-ceph # namespace:cluster
 spec:
   failureDomain: host
-  deviceClass: hdd
+  deviceClass: ssd
   replicated:
     size: 3
     requireSafeReplicaSize: true
@@ -24,7 +24,7 @@ spec:
 #   namespace: rook-ceph
 # spec:
 #   failureDomain: host
-#   deviceClass: hdd
+#   deviceClass: ssd
 #   erasureCoded:
 #     dataChunks: 2
 #     codingChunks: 1

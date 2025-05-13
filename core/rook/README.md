@@ -12,28 +12,21 @@
 - 推荐额外配置 1 条网络用于集群内数据复制, 可以极大提升存储性能
   - 如果只有 1 条网络，则移除 `rook-ceph-cluster` 配置中的 `cephClusterSpec.network`
   - 如果有 2 条网络，根据实际的宿主机网络设置 `public` 和 `cluster` 网段
-- 为存储节点打上额外 label, 下面使用 3 台 mn 节点复用作为存储节点
+- 为存储节点打上额外 label, 即只有这些节点会部署 rook 集群
   ```sh
   kubectl label node bj1sn001 node-role.kubernetes.io/storage=true
   kubectl label node bj1sn002 node-role.kubernetes.io/storage=true
   kubectl label node bj1sn003 node-role.kubernetes.io/storage=true
   kubectl label node bj1sn004 node-role.kubernetes.io/storage=true
   ```
- 
-## 操作指南
- 
-- 修复 `ceph orch` 命令无法使用
-  ```shell
-  kubectl exec -it deployments/rook-ceph-tools -- bash
-  ceph mgr module enable rook
-  ceph orch set backend rook
-  ceph orch status
-  ```
 
 ## 部署 Operator
 
   ```sh
   kubectl apply -k operator/
+
+  # 等待 operator 就绪
+  kubectl wait -n rook-ceph --for=condition=ready pod -l app=rook-ceph-operator
   ```
 
 ## 部署 CephCluster
@@ -105,7 +98,7 @@
   * 每个租户需要使用独立的 cephfs 部署
   * 复制示例 [cephfs/bj1cfs01.yaml](./cephfs/bj1cfs01.yaml), 修改所有 `bj1cfs01` 为实际的名称
   * 生产环境 `metadataPool.deviceClass` 需要配置为 `ssd`, `dataPools.deviceClass` 根据实际情况选择 `hdd` 或 `ssd`
-  * 生产环境 `dataPools.erasurecoded` 配置中的 `codingChunks` 即冗余至少为 `2`, 一般配置 `2+2` (需要4节点), `4+2` (需要6节点) 或 `8+3` (需要11节点)
+  * 生产环境 `dataPools.erasurecoded` 配置中的 `codingChunks` 即冗余至少为 `2`, 一般配置 `2+2` (需要4节点), `4+2` (需要6节点) 或 `8+3` (需要11节点)。 其中 `2+2` 是可靠性，性能和得盘率比较均衡配置选项。
   * 生产环境 `metadataServer.resources.memory` 至少 `32Gi`, 其与热元数据数量相关, 每个元数据大约占用内存 `3k` 大小，如果元数据缓存大小不足则会频繁回收内存造成严重性能下降
   * 缺省使用纠删码其得盘率更高，如果需要更高性能则可以使用副本，注释 `dataPools.erasurecoded` 整段配置, 并修改 `StorageClass.parameters.pool` 为 `bj1cfs01-replicated`
 
