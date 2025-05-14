@@ -1,0 +1,35 @@
+clusterName: "bj1slurm01"
+# Slurm cluster type. Can be now gpu or cpu
+clusterType: "cpu"
+# K8s node filters used in Slurm node specifications. Define which nodes should be used to schedule pods to
+k8sNodeFilters:
+  - name: gpu
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: "node-role.kubernetes.io/gpu"
+                  operator: Exists
+    tolerations:
+      - operator: Exists
+        effect: NoSchedule
+  - name: no-gpu
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: "node-role.kubernetes.io/cpu"
+                  operator: Exists
+    tolerations:
+      - operator: Exists
+        effect: NoSchedule
+# Sources for the volumes used in Slurm node specifications
+volumeSources:
+  - name: controller-spool
+    persistentVolumeClaim:
+      storageClass: "bj1cfs01"
+  - name: jail
+    persistentVolumeClaim:
+      storageClass: "bj1cfs01"

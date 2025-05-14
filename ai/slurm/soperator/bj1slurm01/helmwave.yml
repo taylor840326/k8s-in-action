@@ -1,0 +1,14 @@
+version: "0.41.0"
+
+registries:
+- host: cr.eu-north1.nebius.cloud
+
+releases:
+  - name: "bj1slurm01"
+    namespace: "soperator-system"
+    create_namespace: true
+    chart:
+      name: oci://cr.eu-north1.nebius.cloud/soperator/helm-slurm-cluster
+      version: 1.19.0
+    values:
+      - values.yml
