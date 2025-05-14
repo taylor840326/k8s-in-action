@@ -186,6 +186,36 @@ pdsh -w ^all apt install -y socat
 
 ## 安全
 
+### 关闭 SELinux 或 AppArmor
+
+* RHEL/Rocky 等系统
+
+  ```bash
+  vi /etc/selinux/config
+  # 将 SELINUX=enforcing 修改为 SELINUX=disabled
+  SELINUX=disabled
+
+  # 重启
+  reboot
+  # 查看状态
+  getenforce
+  ```
+
+* Ubuntu 系统
+
+  ```bash
+  vi /etc/default/grub
+  # 在 GRUB_CMDLINE_LINUX 中追加 apparmor=0
+  GRUB_CMDLINE_LINUX="apparmor=0"
+
+  # 更新 grub
+  update-grub
+  # 重启
+  reboot
+  # 查看状态
+  aa-enabled
+  ```
+
 ### 关闭密码登录增强安全性
 
 ```sh
