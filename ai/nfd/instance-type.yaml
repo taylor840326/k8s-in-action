@@ -13,7 +13,7 @@ spec:
         - feature: system.name
           matchExpressions:
             # [需要修改]
-            nodename: { op: InRegexp, value: ["^c", "^bj1sn002"] }
+            nodename: { op: InRegexp, value: ["^bj1c", "^bj1"] }
 
     - name: "gpu-node"
       labels:
@@ -27,4 +27,4 @@ spec:
         - feature: system.name
           matchExpressions:
             # [需要修改]
-            nodename: { op: InRegexp, value: ["^g", "^bj1sn004"] }
+            nodename: { op: InRegexp, value: ["^bj1g"] }

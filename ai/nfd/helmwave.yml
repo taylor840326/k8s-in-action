@@ -13,8 +13,3 @@ releases:
       version: v0.17.2
     values:
       - values.yml
-    lifecycle:
-      post_up:
-        - kubectl apply -k .
-      pre_down:
-        - kubectl delete -k .
