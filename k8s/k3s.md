@@ -14,14 +14,44 @@ EOF
 
 ## 安装 k3s
 
-生成 token, 替换下面配置文件中的 <token>
+所有节点准备
 
 ```sh
-echo $(tr -dc a-z0-9 </dev/urandom | head -c 32)
-zhhbdjwwite7o0wtbu1pxowqqod15bwu
-```
+pdsh -w ^all mkdir -p /etc/rancher/k3s
 
-> zhhbdjwwite7o0wtbu1pxowqqod15bwu 为示例，请替换为自己的 token
+# 设置 docker.io 镜像代理, 原因是 docker 官网有限速
+# 其他设置因为开启 embedded-registry 需要 
+cat << 'EOF' > registries.yaml
+mirrors:
+  docker.io:
+    endpoint:
+      - "https://mirror.gcr.io"
+  registry.k8s.io:
+  gcr.io:
+  ghcr.io:
+  nvcr.io:
+  k8s.gcr.io:
+  quay.io:
+  cr.example.com:
+EOF
+pdcp -w ^all registries.yaml /etc/rancher/k3s
+
+# 设置 containerd 代理
+# * 假设 172.18.3.171 为代理服务器的 IP 地址，8080 为代理服务器的端口
+# * NO_PROXY 中还可以 bypass 域名，例如 `*.example.com`, 一般需要设置 harbor 搭建镜像仓库
+# 设置 `CATTLE_NEW_SIGNED_CERT_EXPIRATION_DAYS=3650` 使自动签订的证书有效期为10年
+cat << 'EOF' > k3s.service.env
+CONTAINERD_HTTP_PROXY=http://172.18.3.171:8080
+CONTAINERD_HTTPS_PROXY=http://172.18.3.171:8080
+NO_PROXY="127.0.0.1/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,localhost,*.example.com"
+CATTLE_NEW_SIGNED_CERT_EXPIRATION_DAYS=3650
+EOF
+chmod 0600 k3s.service.env
+pdcp -w ^server k3s.service.env /etc/systemd/system
+# 复制后，其中 CATTLE_NEW_SIGNED_CERT_EXPIRATION_DAYS 在 agent 不是必须的可以移除掉
+cp k3s.service.env k3s-agent.service.env
+pdcp -w ^agent k3s-agent.service.env /etc/systemd/system
+```
 
 ### 安装 k3s server
 
@@ -46,10 +76,11 @@ profiles:
         type: MostAllocated
     name: NodeResourcesFit
 EOF
+pdcp -w ^server scheduler.yaml /etc/rancher/k3s/scheduler.yaml
 
 # 准备 server 配置文件
 # * node-ip 请替换为当前 server 节点的 IP 地址
-# * token 请替换为上面生成的 token
+# * token 执行 `echo $(tr -dc a-z0-9 </dev/urandom | head -c 32)` 生成
 # * cluster-cidr 和 service-cidr 设置 Pod 和 Service 的 IP 地址范围, 需要询问用户是否存在地址段冲突问题
 # * tls-san 设置需要签名的 IP 或者域名，通常设置为 vip 和需要通过外网连接 k3s 的 IP 地址, 如果不设置则 kubeconfig 中需要设置跳过安全检查
 # * disable 关闭 k3s 缺省部署的服务，后续步骤部署 `nginx` 和 `metallb` 作为替代
@@ -75,10 +106,7 @@ kube-scheduler-arg:
 - authentication-tolerate-lookup-failure=false
 - config=/etc/rancher/k3s/scheduler.yaml
 EOF
-
-# 拷贝配置文件到所有 server 节点
-pdsh -w ^server mkdir -p /etc/rancher/k3s
-pdcp -w ^server scheduler.yaml /etc/rancher/k3s/scheduler.yaml
+chmod 0600 server.yaml
 pdcp -w ^server server.yaml /etc/rancher/k3s/config.yaml
 ```
 
@@ -111,8 +139,7 @@ kubelet-arg:
 - container-log-max-files=3
 - container-log-max-size=10Mi
 EOF
-
-pdsh -w ^agent mkdir -p /etc/rancher/k3s
+chmod 0600 agent.yaml
 pdcp -w ^agent agent.yaml /etc/rancher/k3s/config.yaml
 ```
 
@@ -142,55 +169,6 @@ curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh \
 
 ### 常用配置
 
-- 代理 `containerd` 拉取镜像 (必须配置，否则无法拉取镜像)
-
-  ```sh
-  # 设置 docker.io 镜像代理, 原因是 docker 官网有限速
-  cat << 'EOF' > registries.yaml
-  mirrors:
-    docker.io:
-      endpoint:
-        - "https://mirror.gcr.io"
-    registry.k8s.io:
-    gcr.io:
-    ghcr.io:
-    nvcr.io:
-    k8s.gcr.io:
-    quay.io:
-    cr.example.com:
-  EOF
-  pdcp -w ^all registries.yaml /etc/rancher/k3s
-
-  # 设置 containerd 代理
-  # * 假设 10.128.0.200 为代理服务器的 IP 地址，3128 为代理服务器的端口
-  # * NO_PROXY 中还可以 bypass 域名，例如 `*.example.com`, 一般需要设置 harbor 搭建镜像仓库
-  # 设置 `CATTLE_NEW_SIGNED_CERT_EXPIRATION_DAYS=3650` 使自动签订的证书有效期为10年
-  cat << 'EOF' > k3s.service.env
-  CONTAINERD_HTTP_PROXY=http://172.18.3.171:8080
-  CONTAINERD_HTTPS_PROXY=http://172.18.3.171:8080
-  CONTAINERD_NO_PROXY=127.0.0.0/8,172.18.15.0/24,172.18.15.101,172.18.15.102,172.18.15.103,172.18.15.104,*.example.com
-  CATTLE_NEW_SIGNED_CERT_EXPIRATION_DAYS=3650
-  EOF
-
-  # 拷贝配置文件到所有 server 和 agent 节点
-  cp k3s.service.env k3s-agent.service.env
-  pdcp -w ^server k3s.service.env /etc/systemd/system
-  pdcp -w ^agent k3s-agent.service.env /etc/systemd/system
-  pdsh -w ^all systemctl daemon-reload
-  pdsh -w ^server systemctl restart k3s
-  pdsh -w ^agent systemctl restart k3s-agent
-  ```
-
-- 修复在训练场景无法申请大内存的问题
-
-  ```sh
-  pdsh -w ^server "sed -i '/LimitCORE/a LimitMEMLOCK=infinity' /etc/systemd/system/k3s.service"
-  pdsh -w ^agent "sed -i '/LimitCORE/a LimitMEMLOCK=infinity' /etc/systemd/system/k3s-agent.service"
-  pdsh -w ^all systemctl daemon-reload
-  pdsh -w ^server systemctl restart k3s
-  pdsh -w ^agent systemctl restart k3s-agent
-  ```
-
 - 修改 CoreDNS 和 Metrics Server 的配置
 
   ```bash
@@ -205,6 +183,35 @@ curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh \
   kubectl taint node bj1mn01 node-role.kubernetes.io/control-plane:NoSchedule
   kubectl taint node bj1mn02 node-role.kubernetes.io/control-plane:NoSchedule
   kubectl taint node bj1mn03 node-role.kubernetes.io/control-plane:NoSchedule
+  ```
+
+- 修复在训练场景无法申请大内存的问题
+
+  ```sh
+  pdsh -w ^server "sed -i '/LimitCORE/a LimitMEMLOCK=infinity' /etc/systemd/system/k3s.service"
+  pdsh -w ^agent "sed -i '/LimitCORE/a LimitMEMLOCK=infinity' /etc/systemd/system/k3s-agent.service"
+  pdsh -w ^all systemctl daemon-reload
+  pdsh -w ^server systemctl restart k3s
+  pdsh -w ^agent systemctl restart k3s-agent
+  ```
+
+## 常见问题
+
+* 证书过期问题
+
+  ```sh
+  # 检查证书有效期
+  k3s certificate check
+
+  # 调整证书有效期从 1 年调整为 10 年, 需要更新 systemd env 变量
+  CATTLE_NEW_SIGNED_CERT_EXPIRATION_DAYS=3650
+
+  # 重新签发证书, 有效期大于 90 天必须执行
+  k3s certificate rotate
+
+  # 滚动重启每个节点，重启不会触发 Pod 重启
+  systemctl restart k3s
+  systemctl restart k3s-agent
   ```
 
 ## 卸载 k3s
