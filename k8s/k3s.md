@@ -111,26 +111,26 @@ pdcp -w ^server server.yaml /etc/rancher/k3s/config.yaml
 ```
 
 ```sh
-# 在 mn01 上初始化集群
-# * 如果 k3s server 不需要支持 HA，则去掉 `--cluster-init` 即可，除 mn01 外其他所有节点使用下面 agent 方式加入集群
+# 在 bj1mn01 上初始化集群
+# * 如果 k3s server 不需要支持 HA，则去掉 `--cluster-init` 即可，除 bj1mn01 外其他所有节点使用下面 agent 方式加入集群
 curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh \
   | INSTALL_K3S_MIRROR=cn INSTALL_K3S_VERSION=v1.32.4+k3s1 sh -s - server \
     --cluster-init
 
-# 在剩余 mn[02-03] 节点上加入集群
+# 在剩余 bj1mn[02-03] 节点上加入集群, 其中 172.18.15.101 为 bj1mn01 的 IP 地址, 请修改为实际 IP
 curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh \
   | INSTALL_K3S_MIRROR=cn INSTALL_K3S_VERSION=v1.32.4+k3s1 sh -s - server \
 	  --server https://172.18.15.101:6443
 ```
 
-> * 对于生产环境，应当使用 `INSTALL_K3S_VERSION` 固定版本，版本信息可以从 [channel](https://update.k3s.io/v1-release/channels/stable) 中查询
+> * 最新文档版本可以从 [channel](https://update.k3s.io/v1-release/channels/stable) 中查询
 
 ### 安装 k3s agent
 
 ```sh
 # 准备 agent 配置文件
 # * node-ip 请替换为当前 agent 节点的 IP 地址
-# * token 请替换为上面生成的 token
+# * token 请替换为上面 server 配置中的 token
 cat << 'EOF' > agent.yaml
 node-ip: <node-ip>
 token: <token>
@@ -144,7 +144,7 @@ pdcp -w ^agent agent.yaml /etc/rancher/k3s/config.yaml
 ```
 
 ```sh
-# 在非 mn 节点上加入集群
+# 在非 mn 节点上加入集群, 其中 172.18.15.101 为 bj1mn01 的 IP 地址, 请修改为实际 IP
 curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh \
 	| INSTALL_K3S_MIRROR=cn INSTALL_K3S_VERSION=v1.32.4+k3s1 sh -s - agent \
 	--server https://172.18.15.101:6443
@@ -159,13 +159,13 @@ curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh \
   sed -i 's/127.0.0.1:6443/172.18.15.101:6443/g' ~/.kube/config
   kubectl get node
   ```
-- 在外网访问，假如能通过外网 IP 1.2.3.4 访问任意的 mn 节点 7443 端口
+- 在外网访问，假如能通过外网 IP 1.2.3.4 访问任意的 mn 节点 6443 端口
   ```sh
   cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
   sed -i 's/127.0.0.1:6443/1.2.3.4:6443/g' ~/.kube/config
   kubectl get node
   ```
-- 如果访问的 IP 未在 `--tls-san` 中，则需要跳过安全检查，移除 kubeconfig 中的 `certificate-authority-data: xxx` 并添加 `insecure-skip-tls-verify: true` 即可
+- 如果访问的 IP 未在 server 配置中的 `--tls-san`，则需要跳过安全检查，移除 kubeconfig 中的 `certificate-authority-data: xxx` 并添加 `insecure-skip-tls-verify: true` 即可
 
 ### 常用配置
 
@@ -173,7 +173,6 @@ curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh \
 
   ```bash
   kubectl patch deployment coredns -n kube-system --type merge --patch-file k3s-patch/coredns-patch.yaml
-
   kubectl patch deployment metrics-server -n kube-system --type merge --patch-file k3s-patch/metrics-server-patch.yaml
   ```
 
