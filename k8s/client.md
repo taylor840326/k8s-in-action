@@ -1,5 +1,7 @@
 # 使用常用客户端工具
 
+> GA
+
 ## kubectl
 
 阅读文章 https://kubernetes.io/zh-cn/docs/reference/kubectl/
