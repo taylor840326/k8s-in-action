@@ -66,4 +66,4 @@
 
 ### 存储性能测试
 
-使用 [elbencho](../elbencho/README.md) 测试存储性能
+使用 [elbencho](elbencho/README.md) 测试存储性能
