@@ -2,7 +2,7 @@
 
 ## 部署
 
-配置 [硬件](hardware.md)
+配置 [BIOS](bios.md)
 
 ### 手动部署
 
