@@ -1,4 +1,6 @@
-# 0 准备
+# 系统
+
+## 准备
 
 ### 管理工具 pdsh
 
@@ -39,35 +41,36 @@ ssh-keygen -t ecdsa
 pdsh -w ^all -R exec ssh-copy-id %h
 ```
 
+## 网络
+
 ### 设置节点统一 interface 名称
 
-> * 后续一些服务依赖一致的 interface 名称
-> * 某些环境 interface 名称已统一，可以跳过
+* CNI 依赖一致的 interface 名称
+* 如果 interface 名称已统一，可以跳过
+* 一般物理机上 interface 名称需要根据实际情况进行修改统一名称，下面是一个示例
 
-一般物理机上 interface 名称需要根据实际情况进行修改统一名称，下面是一个示例
-
-```sh
-cat << 'EOF' /etc/netplan/00-installer-config.yaml
-network:
-  ethernets:
-    eth0:
-      addresses:
-      - 10.128.0.1/16
-      routes:
-      - to: default
-        via: 10.128.255.254
-      nameservers:
+  ```sh
+  cat << 'EOF' /etc/netplan/00-installer-config.yaml
+  network:
+    ethernets:
+      eth0:
         addresses:
-        - 119.29.29.29
-        - 223.5.5.5
-        - 223.6.6.6
-      match:
-        macaddress: fa:16:3e:f1:c3:fd
-      set-name: eth0
-EOF
+        - 10.128.0.1/16
+        routes:
+        - to: default
+          via: 10.128.255.254
+        nameservers:
+          addresses:
+          - 119.29.29.29
+          - 223.5.5.5
+          - 223.6.6.6
+        match:
+          macaddress: fa:16:3e:f1:c3:fd
+        set-name: eth0
+  EOF
 
-netplan apply
-```
+  netplan apply
+  ```
 
 ```bash
 # 检查网络配置
@@ -75,6 +78,17 @@ pdsh -w ^all ip r
 # 检查 dns 配置
 pdsh -w ^all resolvectl dns
 ```
+
+### 检查所有节点 MTU 是否一致并且正确
+
+```sh
+# eth0 替换为实际的 interface 名称
+pdsh -w ^all ip link show eth0 | grep mtu
+```
+
+输出结果应该为 `mtu 1500`
+
+## 系统
 
 ### 设置节点名称
 
@@ -85,68 +99,66 @@ hostnamectl set-hostname bj1mn02
 ...
 ```
 
-### 设置时间同步和时区
+### 设置时间同步
 
 ```sh
+# Ubuntu
 pdsh -w ^all sed -i 's/^#NTP=/NTP=ntp.aliyun.com/g' /etc/systemd/timesyncd.conf
 pdsh -w ^all systemctl restart systemd-timesyncd
 pdsh -w ^all timedatectl timesync-status
 
+# RHEL/Rocky
+pdsh -w ^all dnf install -y chrony
+pdsh -w ^all sed -i 's/^pool.*/pool ntp.aliyun.com iburst/g' /etc/chrony.conf
+pdsh -w ^all systemctl enable --now chronyd
+pdsh -w ^all chronyc sources
+```
+
+### 设置时区
+
+```sh
 pdsh -w ^all timedatectl set-timezone Asia/Shanghai
 ```
 
-> 也可以根据需要自行搭建 ntp server
-
-### 设置 apt 镜像
+### 设置镜像源
 
 ```sh
+## Ubuntu
 pdsh -w ^all sed -i 's@//.*archive.ubuntu.com@//mirrors.ustc.edu.cn@g' /etc/apt/sources.list
 pdsh -w ^all sed -i 's/security.ubuntu.com/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
 pdsh -w ^all sed -i 's/http:/https:/g' /etc/apt/sources.list
 pdsh -w ^all apt update
-```
 
-如果需要使用代理，可以设置 apt 代理：
-
-```bash
+# 如果需要使用代理，可以设置 apt 代理：
 cat << 'EOF' > 80proxy
 Acquire::http::Proxy "http://100.68.3.1:3128";
-Acquire::https::Proxy "http://10.68.3.1:3128";
+Acquire::https::Proxy "http://100.68.3.1:3128";
 EOF
-
 pdcp -w ^all 80proxy /etc/apt/apt.conf.d/80proxy
 pdsh -w ^all apt update
 ```
 
-### 设置防火墙
-
 ```sh
-pdsh -w ^all ufw disable
-```
+## RHEL/Rocky 8
+pdsh -w ^all sed -e 's|^mirrorlist=|#mirrorlist=|g' \
+    -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.ustc.edu.cn/rocky|g' \
+    -i.bak \
+    /etc/yum.repos.d/Rocky-AppStream.repo \
+    /etc/yum.repos.d/Rocky-BaseOS.repo \
+    /etc/yum.repos.d/Rocky-Extras.repo \
+    /etc/yum.repos.d/Rocky-PowerTools.repo
 
-### 关闭 swap
-
-```sh
-pdsh -w ^all swapoff -a
-pdsh -w ^all cp /etc/fstab /etc/fstab.bak
-pdsh -w ^all "sed -i 's/^\/swap/#&/' /etc/fstab"
-```
-
-### 开启 CPU 超线程
-
-在 BIOS 中修改后重启，在系统执行 `lscpu` 检查是否为 `Thread(s) per core: 2`
-
-### 开启 CPU Performance Mode
-
-如果节点间 `ping` 延迟大于 `0.1ms`， 则需要在 BIOS 中禁用 `SpeedStep` 和 `C1E` 模式
-
-```sh
-# 查看当前 CPU 频率 (执行任意命令即可)
-pdsh -w ^all 'apt install linux-tools-common linux-tools-`uname -r` -y'
-turbostat --interval 1
+## RHEL/Rocky 9
+pdsh -w ^all sed -e 's|^mirrorlist=|#mirrorlist=|g' \
+    -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.ustc.edu.cn/rocky|g' \
+    -i.bak \
+    /etc/yum.repos.d/rocky-extras.repo \
+    /etc/yum.repos.d/rocky.repo
 ```
 
 ### 锁定内核版本，避免驱动失效
+
+> 只有 Ubuntu 系统需要
 
 确保所有节点使用一致的内核版本后，再进行锁定
 
@@ -166,23 +178,33 @@ EOF
 pdcp -w ^all nolinuxupgrades /etc/apt/preferences.d/nolinuxupgrades
 ```
 
-### 修复 `kubectl logs` 输出 `too many open files` 错误
+## 性能
+
+### 关闭 swap
 
 ```sh
-cat << 'EOF' > 80-inotify.conf
-fs.inotify.max_user_instances=1280
-fs.inotify.max_user_watches=655360
-EOF
-
-pdcp -w ^all 80-inotify.conf /etc/sysctl.d
-pdsh -w ^all sysctl --system
+pdsh -w ^all swapoff -a
+pdsh -w ^all cp /etc/fstab /etc/fstab.bak
+pdsh -w ^all "sed -i 's/.*swap.*/#&/' /etc/fstab"
 ```
 
-### 修复 `kubectl port-forward` 输出 `unable to do port forwarding: socat not found` 错误
+### 检查是否开启 CPU 超线程
 
 ```sh
-pdsh -w ^all apt install -y socat
+pdsh -w ^all 'lscpu | grep "Thread(s) per core"'
+```
 
+输出结果必须为 `Thread(s) per core: 2`
+
+### 开启 CPU Performance Mode
+
+如果节点间 `ping` 延迟大于 `0.1ms`， 则需要在 BIOS 中禁用 `SpeedStep` 和 `C1E` 模式
+
+```sh
+# 查看当前 CPU 频率 (执行任意命令即可)
+pdsh -w ^all 'apt install linux-tools-common linux-tools-`uname -r` -y'
+turbostat --interval 1
+```
 
 ## 安全
 
@@ -225,6 +247,14 @@ pdsh -w ^all systemctl reload ssh
 
 ### 设置防火墙
 
+```sh
+# Ubuntu
+pdsh -w ^all ufw disable
+
+# RHEL/Rocky
+pdsh -w ^all systemctl disable firewalld --now
+```
+
 不同角色节点防火墙设置不同，需要根据实际情况进行设置
 
 #### 存储节点
@@ -253,6 +283,26 @@ ufw deny 22
 
 # 查看
 ufw status verbose
+```
+
+## 其他
+
+### 修复 `kubectl logs` 输出 `too many open files` 错误
+
+```sh
+cat << 'EOF' > 80-inotify.conf
+fs.inotify.max_user_instances=1280
+fs.inotify.max_user_watches=655360
+EOF
+
+pdcp -w ^all 80-inotify.conf /etc/sysctl.d
+pdsh -w ^all sysctl --system
+```
+
+### 修复 `kubectl port-forward` 输出 `unable to do port forwarding: socat not found` 错误
+
+```sh
+pdsh -w ^all apt install -y socat
 ```
 
 ## 基础测试
