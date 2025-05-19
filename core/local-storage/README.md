@@ -12,7 +12,7 @@
 kubectl apply -k .
 
 # 等待所有 pod 就绪
-kubectl wait -n kube-system --for=condition=ready pod -l app=local-path-provisioner
+kubectl wait -n local-path-storage --for=condition=ready pod -l app=local-path-provisioner
 ```
 
 ## 卸载
