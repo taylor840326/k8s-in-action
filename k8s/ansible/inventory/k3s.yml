@@ -15,11 +15,11 @@ k3s_cluster:
     ansible_port: 22
     ansible_user: root
     # access https://update.k3s.io/v1-release/channels/stable to get latest stable k3s version
-    k3s_version: v1.32.3+k3s1
+    k3s_version: v1.32.4+k3s1
     # The token should be a random string of reasonable length. You can generate
     # one with the following commands:
-    # - tr -dc a-z0-9 </dev/urandom | head -c 32
-    token: "krxmr046wt51ua9zbpfglrru8czpkdm0"
+    # - echo $(tr -dc a-z0-9 </dev/urandom | head -c 32)
+    token: "<replace with your token>"
     api_endpoint: "{{ hostvars[groups['server'][0]]['ansible_host'] | default(groups['server'][0]) }}"
     # interface which will be used for cni
     iface: ens160
@@ -28,7 +28,7 @@ k3s_cluster:
     proxy_env:
       HTTPS_PROXY: "http://172.18.3.171:8080"
       HTTP_PROXY: "http://172.18.3.171:8080"
-      NO_PROXY: "127.0.0.1/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,localhost,*.example.com"
+      NO_PROXY: "127.0.0.1/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,localhost,*.paratera.com,*.blsc.cn,*.paracloud.com"
 
     # Optional vars
     # extra_server_args: ""
@@ -87,7 +87,10 @@ k3s_cluster:
         nvcr.io:
         k8s.gcr.io:
         quay.io:
-        cr.example.com:
+        cr.bj1.paratera.com:
+          # uncomment to use private registry with http
+          # endpoint:
+          #   - "http://cr.bj1.paratera.com"
     scheduler_config_yaml: |
       apiVersion: kubescheduler.config.k8s.io/v1
       kind: KubeSchedulerConfiguration
