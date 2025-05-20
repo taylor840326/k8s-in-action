@@ -1,19 +1,4 @@
-project: "network-operator"
 version: "0.41.0"
-
-.options:
-  &options # if set, upgrade process rolls back changes made in case of failed upgrade.
-  atomic: true
-  # the wait will be set automatically if atomic is true
-  wait: true
-  # time to wait for any individual Kubernetes operation .
-  timeout: 300s
-  # limit the maximum number of revisions saved per release.
-  max_history: 3
-  # create the release namespace if not present.
-  namespace: network-operator
-  create_namespace: true
-  pending_release_strategy: rollback
 
 repositories:
   - name: nvidia
@@ -21,7 +6,8 @@ repositories:
 
 releases:
   - name: network-operator
-    <<: *options
+    namespace: network-operator
+    create_namespace: true
     chart:
       name: nvidia/network-operator
       version: v25.1.0
