@@ -1,24 +1,45 @@
-driver:
-  enabled: false
-  # version: "560.35.03"
-  # env:
-  # - name: http_proxy
-  #   value: http://127.0.0.1:3128
-  # - name: https_proxy
-  #   value: http://127.0.0.1:3128
-  # - name: no_proxy
-  #   value: 127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
-  # rdma:
-  #   enabled: true
-  #   useHostMofed: true
-  repoConfig:
-    configMapName: repo-config
-  ## close GPU GSP (optional)
-  kernelModuleConfig:
-    name: "kernel-module-params"
-
 nfd:
   enabled: false
+
+daemonsets:
+  tolerations:
+    - operator: Exists
+      effect: NoSchedule 
+
+operator:
+  resources:
+    limits:
+      cpu: null
+      memory: 2Gi
+  tolerations:
+    - operator: Exists
+      effect: NoSchedule
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: "node-role.kubernetes.io/control-plane"
+                operator: Exists
+
+driver:
+  enabled: false
+  version: "570.124.06"
+  # env:
+  # - name: http_proxy
+  #   value: http://172.18.3.171:8080
+  # - name: https_proxy
+  #   value: http://172.18.3.171:8080
+  # - name: no_proxy
+  #   value: 127.0.0.1/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,localhost
+  rdma:
+    enabled: false
+    useHostMofed: false
+  repoConfig:
+    configMapName: repo-config
+  # close GPU GSP (optional)
+  kernelModuleConfig:
+    name: "kernel-module-params"
 
 toolkit:
   env:
@@ -33,33 +54,8 @@ toolkit:
     - name: NVIDIA_CONTAINER_RUNTIME_LOG_LEVEL
       value: "warning"
 
-daemonsets:
-  tolerations:
-    - operator: Exists
-      effect: NoSchedule 
-
-operator:
-  resources:
-    limits:
-      cpu: "1"
-      memory: 2Gi
-    requests:
-      cpu: 200m
-      memory: 100Mi
-  tolerations:
-    - key: node-role.kubernetes.io/control-plane
-      operator: Exists
-      effect: NoSchedule
-  affinity:
-    nodeAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 50
-          preference:
-            matchExpressions:
-              - key: node-role.kubernetes.io/master
-                operator: Exists
-
 dcgmExporter:
+  enabled: true
   env:
     - name: DCGM_EXPORTER_LISTEN
       value: ":9400"
@@ -67,3 +63,6 @@ dcgmExporter:
       value: "true"
   config:
     name: dcgm-exporter-config
+
+migManager:
+  enabled: false
