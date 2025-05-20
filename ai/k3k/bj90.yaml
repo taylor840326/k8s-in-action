@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: k3k-bj90
+---
+apiVersion: k3k.io/v1alpha1
+kind: Cluster
+metadata:
+  name: bj90
+  namespace: k3k-bj90
+spec:
+  mode: virtual
+  # access https://hub.docker.com/r/rancher/k3s/tags
+  version: v1.33.0-k3s1
+  nodeSelector:
+    node-role.kubernetes.io/cpu: "true"
+  expose:
+    ingress:
+      ingressClassName: nginx
+      annotations:
+        nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+        nginx.ingress.kubernetes.io/backend-protocol: "true"
+        nginx.ingress.kubernetes.io/ssl-redirect: "HTTPS"
+  persistence:
+    type: dynamic
+    storageClassName: local-path
+  servers: 3
+  tlsSANs:
+  - k8s.bj90.paratera.com
+  clusterCIDR: 10.42.0.0/16
+  serviceCIDR: 10.43.0.0/16
+  clusterDNS: 10.43.0.10
+  serverArgs:
+  - --tls-san=k8s.bj90.paratera.com
+  serverEnvs:
+  - name: CATTLE_NEW_SIGNED_CERT_EXPIRATION_DAYS
+    value: "3650"
+  - name: HTTP_PROXY
+    value: "http://172.18.3.171:8080"
+  - name: HTTPS_PROXY
+    value: "http://172.18.3.171:8080"
+  - name: NO_PROXY
+    value: "127.0.0.1/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,localhost,*.paratera.com,*.blsc.cn,*.paracloud.com"
+  agents: 1
+  agentEnvs:
+  - name: HTTP_PROXY
+    value: "http://172.18.3.171:8080"
+  - name: HTTPS_PROXY
+    value: "http://172.18.3.171:8080"
+  - name: NO_PROXY
+    value: "127.0.0.1/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,localhost,*.paratera.com,*.blsc.cn,*.paracloud.com"

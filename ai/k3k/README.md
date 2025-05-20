@@ -9,8 +9,8 @@ helmwave up --build
 ## 管理集群
 
 ```bash
-kubectl apply -f bj1k3s01.yaml
-kubectl delete -f bj1k3s01.yaml
+kubectl apply -f bj90.yaml
+kubectl delete -f bj90.yaml
 ```
 
 ## 卸载
