@@ -1,0 +1,14 @@
+version: "0.41.0"
+
+repositories:
+  - name: k3k
+    url: https://rancher.github.io/k3k
+
+releases:
+  - name: "k3k"
+    namespace: k3k-system
+    create_namespace: true
+    chart:
+      name: k3k/k3k
+    values:
+      - values.yml
