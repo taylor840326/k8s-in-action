@@ -18,10 +18,12 @@ kubectl apply --server-side -k .
   docker build -t $IMAGE .
   docker push $IMAGE
   ```
-* 修改 `mpi-operator.yaml` 中的镜像
+## 测试
+
+参见 [nccl-test](../nccl-test/README.md)
 
 ## 卸载
 
 ```sh
-kubectl delete --server-side -k .
+kubectl delete -k .
 ```
