@@ -1,0 +1,15 @@
+version: "0.41.0"
+
+repositories:
+  - name: twuni
+    url: https://helm.twun.io
+
+releases:
+  - name: docker-registry
+    namespace: docker-registry
+    create_namespace: true
+    chart:
+      name: twuni/docker-registry
+      version: v2.2.3
+    values:
+      - values.yml

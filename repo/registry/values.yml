@@ -1,0 +1,13 @@
+replicaCount: 2
+ingress:
+  enabled: true
+  hosts:
+    - dcr.bj1.paratera.com
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+persistence:
+  accessMode: ReadWriteMany
+  enabled: true
+  size: 1Ti
+  storageClass: shared-nfs
+
