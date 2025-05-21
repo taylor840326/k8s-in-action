@@ -2,11 +2,7 @@
 
 > Beta
 
-提供轻量级分布式推理服务
-
-```bash
-kubectl apply --server-side -k .
-```
+提供轻量级分布式推理服务, 适用于部署 DeepSeek V3/R1 671B 等大模型
 
 ## 部署
 
