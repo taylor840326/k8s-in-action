@@ -14,6 +14,130 @@ bj1gn[001-003]
 EOF
 ```
 
+
+## 安装 haproxy 和 keepalived 用于 k3s apiserver 负载均衡
+
+```sh
+# 安装 haproxy 和 keepalived
+pdsh -w ^server apt install -y haproxy keepalived
+
+# 准备 haproxy 配置文件
+cat << 'EOF' > haproxy.cfg
+frontend k3s-frontend
+    bind *:7443
+    mode tcp
+    option tcplog
+    default_backend k3s-backend
+
+backend k3s-backend
+    mode tcp
+    option tcp-check
+    balance roundrobin
+    default-server inter 10s downinter 5s
+    server bj1mn01 172.18.15.101:6443 check
+    server bj1mn02 172.18.15.101:6443 check
+    server bj1mn03 172.18.15.101:6443 check
+EOF
+pdcp -w ^server haproxy.cfg /etc/haproxy/haproxy.cfg
+pdsh -w ^server systemctl restart haproxy
+
+# 准备 keepalived 配置文件
+# * virtual_router_id 请**随机从 0-255 之间选择一个值**，如果相同网络环境有其它用户也启动 keepalived, 需要避免此值相同, 否则会导致冲突
+# * 172.18.15.199 为 vip (**子网掩码值必须和物理网络一致**, 否则可能无法访问)，可以使用局域网中空闲的 IP，如果使用数据中心则需要联系管理员获取
+cat << 'EOF' > bj1mn01-keepalived.conf
+vrrp_script chk_haproxy {
+    script 'killall -0 haproxy' # faster than pidof
+    interval 2
+}
+
+vrrp_instance haproxy-vip {
+    interface eth0 # change it
+    state MASTER 
+    priority 100 
+
+    virtual_router_id 52
+
+    virtual_ipaddress {
+      172.18.15.199/24
+    }
+
+    unicast_src_ip 172.18.15.101
+    unicast_peer {
+      172.18.15.102
+      172.18.15.103
+    }
+
+    track_script {
+        chk_haproxy
+    }
+}
+EOF
+pdcp -w bj1mn01 bj1mn01-keepalived.conf /etc/keepalived/keepalived.conf
+
+cat << 'EOF' > bj1mn02-keepalived.conf
+vrrp_script chk_haproxy {
+    script 'killall -0 haproxy' # faster than pidof
+    interval 2
+}
+
+vrrp_instance haproxy-vip { 
+    interface eth0 # change it
+    state BACKUP 
+    priority 90 
+
+    virtual_router_id 52    
+
+    virtual_ipaddress {
+      172.18.15.199/24
+    }
+
+    unicast_src_ip 172.18.15.102
+    unicast_peer {
+      172.18.15.101
+      172.18.15.103
+    }
+
+    track_script {
+        chk_haproxy
+    }
+}
+EOF
+pdcp -w bj1mn02 bj1mn02-keepalived.conf /etc/keepalived/keepalived.conf
+
+cat << 'EOF' > bj1mn03-keepalived.conf
+vrrp_script chk_haproxy {
+    script 'killall -0 haproxy' # faster than pidof
+    interval 2
+}
+
+vrrp_instance haproxy-vip { 
+    interface eth0 # change it
+    state BACKUP 
+    priority 80 
+
+    virtual_router_id 52    
+
+    virtual_ipaddress {
+      172.18.15.199/24
+    }
+
+    unicast_src_ip 172.18.15.103
+    unicast_peer {
+      172.18.15.101
+      172.18.15.102
+    }
+
+    track_script {
+        chk_haproxy
+    }
+}
+EOF 
+pdcp -w bj1mn03 bj1mn03-keepalived.conf /etc/keepalived/keepalived.conf
+
+# 重启 keepalived
+pdsh -w ^server systemctl restart keepalived
+```
+
 ## 安装 k3s
 
 所有节点准备
@@ -122,7 +246,7 @@ curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh \
 # 在剩余 bj1mn[02-03] 节点上加入集群, 其中 172.18.15.101 为 bj1mn01 的 IP 地址, 请修改为实际 IP
 curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh \
   | INSTALL_K3S_MIRROR=cn INSTALL_K3S_VERSION=v1.32.4+k3s1 sh -s - server \
-	  --server https://172.18.15.101:6443
+	  --server https://172.18.15.199:7443
 ```
 
 > * 最新文档版本可以从 [channel](https://update.k3s.io/v1-release/channels/stable) 中查询
@@ -149,7 +273,7 @@ pdcp -w ^agent agent.yaml /etc/rancher/k3s/config.yaml
 # 在非 mn 节点上加入集群, 其中 172.18.15.101 为 bj1mn01 的 IP 地址, 请修改为实际 IP
 curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh \
 	| INSTALL_K3S_MIRROR=cn INSTALL_K3S_VERSION=v1.32.4+k3s1 sh -s - agent \
-	--server https://172.18.15.101:6443
+	--server https://172.18.15.199:7443
 ```
 
 ### 访问 k3s 集群
@@ -158,13 +282,13 @@ curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh \
 - 在非集群的局域网网内
   ```sh
   cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
-  sed -i 's/127.0.0.1:6443/172.18.15.101:6443/g' ~/.kube/config
+  sed -i 's/127.0.0.1:6443/172.18.15.199:7443/g' ~/.kube/config
   kubectl get node
   ```
-- 在外网访问，假如能通过外网 IP 1.2.3.4 访问任意的 mn 节点 6443 端口
+- 在外网访问，假如能通过外网 IP 1.2.3.4 访问任意的 mn 节点 7443 端口
   ```sh
   cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
-  sed -i 's/127.0.0.1:6443/1.2.3.4:6443/g' ~/.kube/config
+  sed -i 's/127.0.0.1:6443/1.2.3.4:7443/g' ~/.kube/config
   kubectl get node
   ```
 - 如果访问的 IP 未在 server 配置中的 `--tls-san`，则需要跳过安全检查，移除 kubeconfig 中的 `certificate-authority-data: xxx` 并添加 `insecure-skip-tls-verify: true` 即可
