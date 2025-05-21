@@ -1,0 +1,160 @@
+apiVersion: leaderworkerset.x-k8s.io/v1
+kind: LeaderWorkerSet
+metadata:
+  name: sglang
+spec:
+  replicas: 1
+  leaderWorkerTemplate:
+    size: 2
+    restartPolicy: RecreateGroupOnPodRestart
+    leaderTemplate:
+      metadata:
+        labels:
+          role: leader
+      spec:
+        containers:
+          - name: sglang-leader
+            image: lmsysorg/sglang:v0.4.6.post4-cu124
+            env:
+              # Need uncomment below env when using **RoCE** network
+              # - name: NCCL_IB_GID_INDEX
+              #   value: "3"
+              - name: LWS_WORKER_INDEX
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.labels['leaderworkerset.sigs.k8s.io/worker-index']
+            command:
+              - python3
+              - -m
+              - sglang.launch_server
+              - --served-model-name
+              - deepseek-ai/DeepSeek-R1
+              - --model-path
+              - /models/DeepSeek-R1
+              - --tp
+              - "16"
+              - --dist-init-addr
+              - $(LWS_LEADER_ADDRESS):20000
+              - --nnodes
+              - $(LWS_GROUP_SIZE)
+              - --node-rank
+              - $(LWS_WORKER_INDEX)
+              - --trust-remote-code
+              - --host
+              - "0.0.0.0"
+              - --port
+              - "40000"
+            resources:
+              limits:
+                nvidia.com/gpu: "8"
+                rdma/hca: "1"
+            ports:
+              - containerPort: 40000
+            readinessProbe:
+              tcpSocket:
+                port: 40000
+              initialDelaySeconds: 15
+              periodSeconds: 10
+            volumeMounts:
+              - mountPath: /dev/shm
+                name: dshm
+              - mountPath: /models
+                name: local
+        tolerations:
+          - operator: Exists
+            effect: NoSchedule
+        # affinity:
+        #   nodeAffinity:
+        #     requiredDuringSchedulingIgnoredDuringExecution:
+        #       nodeSelectorTerms:
+        #         - matchExpressions:
+        #           - key: kubernetes.io/hostname
+        #             operator: In
+        #             values:
+        #               - "g0014"
+        #               - "g0016"
+        volumes:
+          - name: dshm
+            emptyDir:
+              medium: Memory
+              sizeLimit: 15Gi
+          - name: local
+            hostPath:
+              path: /data/models
+              type: Directory
+    workerTemplate:
+      spec:
+        containers:
+          - name: sglang-worker
+            image: lmsysorg/sglang:v0.4.6.post4-cu124
+            env:
+              # Need uncomment below env when using **RoCE** network
+              # - name: NCCL_IB_GID_INDEX
+              #   value: "3"
+              - name: LWS_WORKER_INDEX
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.labels['leaderworkerset.sigs.k8s.io/worker-index']
+            command:
+              - python3
+              - -m
+              - sglang.launch_server
+              - --served-model-name
+              - deepseek-ai/DeepSeek-R1
+              - --model-path
+              - /models/DeepSeek-R1
+              - --tp
+              - "16"
+              - --dist-init-addr
+              - $(LWS_LEADER_ADDRESS):20000
+              - --nnodes
+              - $(LWS_GROUP_SIZE)
+              - --node-rank
+              - $(LWS_WORKER_INDEX)
+              - --trust-remote-code
+            resources:
+              limits:
+                nvidia.com/gpu: "8"
+                rdma/hca: "1"
+            volumeMounts:
+              - mountPath: /dev/shm
+                name: dshm
+              - mountPath: /models
+                name: local
+        tolerations:
+          - operator: Exists
+            effect: NoSchedule
+        # affinity:
+        #   nodeAffinity:
+        #     requiredDuringSchedulingIgnoredDuringExecution:
+        #       nodeSelectorTerms:
+        #         - matchExpressions:
+        #           - key: kubernetes.io/hostname
+        #             operator: In
+        #             values:
+        #               - "g0014"
+        #               - "g0016"
+        volumes:
+          - name: dshm
+            emptyDir:
+              medium: Memory
+              sizeLimit: 15Gi
+          - name: local
+            hostPath:
+              path: /data/models
+              type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sglang-leader
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 40000
+  selector:
+    leaderworkerset.sigs.k8s.io/name: sglang
+    role: leader
+  type: LoadBalancer

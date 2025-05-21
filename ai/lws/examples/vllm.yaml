@@ -1,0 +1,98 @@
+apiVersion: leaderworkerset.x-k8s.io/v1
+kind: LeaderWorkerSet
+metadata:
+  name: vllm
+spec:
+  replicas: 1
+  leaderWorkerTemplate:
+    size: 2
+    restartPolicy: RecreateGroupOnPodRestart
+    leaderTemplate:
+      metadata:
+        labels:
+          role: leader
+      spec:
+        containers:
+          - name: vllm-leader
+            image: vllm/vllm-openai:v0.8.5.post1
+            command:
+              - sh
+              - -c
+              - "bash /vllm-workspace/examples/online_serving/multi-node-serving.sh leader --ray_cluster_size=$(LWS_GROUP_SIZE);
+                python3 -m vllm.entrypoints.openai.api_server --port 8080 --trust-remote-code --model /models/deepseek-ai/DeepSeek-R1 --served-model-name deepseek-ai/DeepSeek-R1 --tensor-parallel-size 8 --pipeline_parallel_size 2"
+            env:
+              - name: VLLM_USE_V1
+                value: "0"
+            resources:
+              limits:
+                nvidia.com/gpu: "8"
+                rdma/hca: "1"
+            ports:
+              - containerPort: 8080
+            readinessProbe:
+              tcpSocket:
+                port: 8080
+              initialDelaySeconds: 15
+              periodSeconds: 10
+            volumeMounts:
+              - mountPath: /dev/shm
+                name: dshm
+              - mountPath: /models
+                name: local
+        tolerations:
+          - operator: Exists
+            effect: NoSchedule
+        volumes:
+          - name: dshm
+            emptyDir:
+              medium: Memory
+              sizeLimit: 15Gi
+          - name: local
+            hostPath:
+              path: /data/models
+              type: Directory
+    workerTemplate:
+      spec:
+        containers:
+          - name: vllm-worker
+            image: vllm/vllm-openai:v0.8.5.post1
+            command:
+              - sh
+              - -c
+              - "bash /vllm-workspace/examples/online_serving/multi-node-serving.sh worker --ray_address=$(LWS_LEADER_ADDRESS)"
+            resources:
+              limits:
+                nvidia.com/gpu: "8"
+                rdma/hca: "1"
+            volumeMounts:
+              - mountPath: /dev/shm
+                name: dshm
+              - mountPath: /models
+                name: local
+        tolerations:
+          - operator: Exists
+            effect: NoSchedule
+        volumes:
+          - name: dshm
+            emptyDir:
+              medium: Memory
+              sizeLimit: 15Gi
+          - name: local
+            hostPath:
+              path: /data/models
+              type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-leader
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    leaderworkerset.sigs.k8s.io/name: vllm
+    role: leader
+  type: LoadBalancer

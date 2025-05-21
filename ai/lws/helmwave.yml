@@ -1,0 +1,15 @@
+version: "0.41.0"
+
+registries:
+  - host: registry.k8s.io
+    
+
+releases:
+  - name: "lws"
+    namespace: "lws-system"
+    create_namespace: true
+    chart:
+      name: oci://registry.k8s.io/lws/charts/lws
+      version: 0.6.1
+    values:
+      - values.yml
