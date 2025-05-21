@@ -35,8 +35,8 @@ backend k3s-backend
     balance roundrobin
     default-server inter 10s downinter 5s
     server bj1mn01 172.18.15.101:6443 check
-    server bj1mn02 172.18.15.101:6443 check
-    server bj1mn03 172.18.15.101:6443 check
+    server bj1mn02 172.18.15.102:6443 check
+    server bj1mn03 172.18.15.103:6443 check
 EOF
 pdcp -w ^server haproxy.cfg /etc/haproxy/haproxy.cfg
 pdsh -w ^server systemctl restart haproxy
