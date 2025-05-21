@@ -17,13 +17,13 @@
 - 部署集群
 
     ```bash
-    ansible-playbook -i inventory/k3s.yml playbooks/k3s/cluster.yml
+    ansible-playbook -i inventory/k3s.yml playbooks/k3s/cluster.yml [--private-key ~/.ssh/id_rsa]
     ```
 
 - 卸载集群
 
     ```bash
-    ansible-playbook -i inventory/k3s.yml playbooks/k3s/reset.yml
+    ansible-playbook -i inventory/k3s.yml playbooks/k3s/reset.yml [--private-key ~/.ssh/id_rsa]
     ```
 
 ## 部署 k8s 发行版集群
