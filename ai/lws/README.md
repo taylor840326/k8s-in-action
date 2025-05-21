@@ -1,5 +1,7 @@
 # [lws](https://github.com/kubernetes-sigs/lws) 
 
+> Beta
+
 提供轻量级分布式推理服务
 
 ```bash

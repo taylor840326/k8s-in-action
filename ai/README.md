@@ -15,8 +15,7 @@
 
 ## 推理
 
-1. 部署 lws 用于分布式推理
-2. 部署 [ollama](ollama/) 用于提供 Ollama+OpenWebUI 轻量推理服务
+* 部署 [lws](lws/) 用于轻量级分布式推理, 适用于部署 DeepSeek V3/R1 671B 等大模型   
 
 ## 性能测试
 

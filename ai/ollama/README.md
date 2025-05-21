@@ -1,5 +1,7 @@
 # Ollama + Open WebUI
 
+> Beta
+
 提供一个类 ChatGPT 服务
 
 - 修改 `ingress.yaml` 中的 `tls.hosts` 和 `rules.host` 为实际的域名
