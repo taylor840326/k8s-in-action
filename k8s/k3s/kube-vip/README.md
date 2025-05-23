@@ -11,7 +11,7 @@
 * `address` 为 vip 地址, 从网络管理员申请获取
 
 ```bash
-kubectl apply -k . -n kube-system
+kubectl apply -k . 
 ```
 
 > 因为从第二台 k3s join 指定 --server 地址为此 vip 时其必须存在
