@@ -298,8 +298,8 @@ curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh \
 - 修改 CoreDNS 和 Metrics Server 的配置
 
   ```bash
-  kubectl patch deployment coredns -n kube-system --type merge --patch-file k3s-patch/coredns-patch.yaml
-  kubectl patch deployment metrics-server -n kube-system --type merge --patch-file k3s-patch/metrics-server-patch.yaml
+  kubectl patch deployment coredns -n kube-system --type merge --patch-file k3s/patch/coredns.yaml
+  kubectl patch deployment metrics-server -n kube-system --type merge --patch-file k3s/patch/metrics-server.yaml
   ```
 
 - 为控制节点打上污点
