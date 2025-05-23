@@ -23,4 +23,3 @@ kubectl apply -k .
 * 负载均衡基于 ipvs 实现, 高可用基于 k8s leader 选举实现
 * 在 vip 所在节点执行 `ipvsadm -ln` 查看 ipvs 规则, 执行 `ipvsadm -lnc` 查看 ipvs 连接
 * 当节点或者其上 apiserver 服务不可用时, kube-vip 会把节点所在 ip 从 ipvs 规则中移除, 并把 vip 分配给其他节点
-* 当节点恢复时, kube-vip 会重新把节点所在 ip 加入 ipvs 规则, 并把 vip 分配给节点
