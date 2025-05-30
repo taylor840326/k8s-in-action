@@ -51,3 +51,20 @@ kubectl delete -f shared-nfs.yml
 
 helmwave down
 ```
+
+## 销毁 NFS & MDRAID
+
+```sh
+# 停止 NFS Server
+systemctl disable nfs-server-kernel --now
+
+# 停止 MDRAID
+df -h 
+umount /dev/md0
+mdadm --detail /dev/md0
+mdadm -S /dev/md0
+# 删除 MDRAID
+mdadm --zero-superblock /dev/nvme0n1
+mdadm --zero-superblock /dev/nvme1n1
+...
+```
