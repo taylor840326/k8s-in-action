@@ -177,6 +177,7 @@
       # sgdisk --zap-all /dev/sda
       ```
       上述抹除分区表命令执行完成后一定要执行一遍下面的 ceph orch device ls --refresh命令。
+      参考链接： https://rook.io/docs/rook/latest-release/Getting-Started/ceph-teardown/?h=sg#zapping-devices
 
     - 查看可用磁盘
         
