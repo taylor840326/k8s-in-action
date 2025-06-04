@@ -1,10 +1,12 @@
-# 开启 NFS 服务
+# GPFS 使用 CES 实现轻量多租户
+
+## 开启 NFS 服务
 
 GPFS 的 NFS 服务需要安装在 CES (Cluster Export Services)节点。
 
-本文档假设NFS服务安装在bj1sn001节点
+本文档假设 NFS 服务安装在 bj1sn001 节点
 
-## 安装软件包
+### 安装软件包
 
 ### 安装依赖
 
