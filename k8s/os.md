@@ -103,7 +103,7 @@ hostnamectl set-hostname bj1mn02
 
 ```sh
 # Ubuntu
-pdsh -w ^all sed -i 's/^#NTP=/NTP=ntp.aliyun.com/g' /etc/systemd/timesyncd.conf
+pdsh -w ^all sed -i -e 's/^#NTP=/NTP=ntp.aliyun.com/g' -e 's/^#PollIntervalMinSec=32/PollIntervalMinSec=32/g' -e 's/^#PollIntervalMaxSec=2048/PollIntervalMaxSec=60/g' /etc/systemd/timesyncd.conf
 pdsh -w ^all systemctl restart systemd-timesyncd
 pdsh -w ^all timedatectl timesync-status
 

@@ -5,3 +5,15 @@ metadata:
   namespace: mpi-operator
 spec:
   replicas: 2
+  template:
+    spec:
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
