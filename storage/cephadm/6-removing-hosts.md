@@ -56,3 +56,9 @@ No daemons reported
 # ceph orch rm bj1sn004
 ```
 
+如果主机离线且不可恢复，则可以从集群中直接移除
+
+```bash
+# ceph orch host rm bj1sn004 --offline --force
+```
+
