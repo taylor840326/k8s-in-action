@@ -34,6 +34,11 @@ _no_schedule标签会自动应用在即将下线的节点上。
 ```
 
 ```bash
+# ceph orch osd rm status
+查看osd 移除进程
+```
+
+```bash
 # ceph -s
 可以看到ceph集群会处于recovering状态直到osd服务全部下线完成。
 完成后osd数量已经变更为目标值。
