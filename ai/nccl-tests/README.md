@@ -4,7 +4,7 @@
 
 ```sh
 # 根据集群实际硬件配置进行修改
-kubectl apply -f nccl-tests-h100.yml
+kubectl apply -f nccl-tests-nodes.yml
 
 # 查询测试结果
 kubectl logs -f nccl-test-h100-launcher-xxx
@@ -12,30 +12,45 @@ kubectl logs -f nccl-test-h100-launcher-xxx
 kubectl delete -f nccl-tests-h100.yml
 ```
 
+### 批量测试节点
+
+1. 创建文件`agent`
+
+```
+root@gn001
+root@gn002
+```
+
+2. 执行脚本
+
+```
+./batch-nccl-tests.sh ^agent
+```
+
 ## 参考结果
 
 ### H100
 
-#### 16x H100 NVLink + 8x 400Gbps IB + all reduce 
+#### 16x H100 NVLink + 8x 400Gbps IB + all reduce
 
 ```
-#                                                              out-of-place                       in-place          
+#                                                              out-of-place                       in-place
 #       size         count      type   redop    root     time   algbw   busbw #wrong     time   algbw   busbw #wrong
-#        (B)    (elements)                               (us)  (GB/s)  (GB/s)            (us)  (GB/s)  (GB/s)       
+#        (B)    (elements)                               (us)  (GB/s)  (GB/s)            (us)  (GB/s)  (GB/s)
    536870912     134217728     float     sum      -1   2622.9  204.69  383.79      0   2622.4  204.72  383.86      0
   1073741824     268435456     float     sum      -1   5200.4  206.47  387.14      0   5199.4  206.51  387.21      0
   2147483648     536870912     float     sum      -1    10308  208.32  390.61      0    10389  206.70  387.57      0
   4294967296    1073741824     float     sum      -1    20528  209.22  392.29      0    20530  209.21  392.27      0
   8589934592    2147483648     float     sum      -1    41145  208.77  391.45      0    41008  209.47  392.76      0
 # Out of bounds values : 0 OK
-# Avg bus bandwidth    : 388.893 
+# Avg bus bandwidth    : 388.893
 ```
 
-### H800 
+### H800
 
-* H800 SXM NVLink 双向带宽 400GB/s
+- H800 SXM NVLink 双向带宽 400GB/s
 
-#### 32x H800 NVLink + 4x 400Gbps IB + all reduce 
+#### 32x H800 NVLink + 4x 400Gbps IB + all reduce
 
 ```
 #                                                              out-of-place                       in-place
@@ -76,7 +91,7 @@ kubectl delete -f nccl-tests-h100.yml
 # Avg bus bandwidth    : 56.0677
 ```
 
-#### 8x H800 NVLink + all reduce 
+#### 8x H800 NVLink + all reduce
 
 ```
 #                                                              out-of-place                       in-place
@@ -117,7 +132,7 @@ kubectl delete -f nccl-tests-h100.yml
 # Avg bus bandwidth    : 65.3513
 ```
 
-#### 32x H800 NVLink + 4x 400Gbps IB + all2all 
+#### 32x H800 NVLink + 4x 400Gbps IB + all2all
 
 ```
 #                                                              out-of-place                       in-place
@@ -158,7 +173,7 @@ kubectl delete -f nccl-tests-h100.yml
 # Avg bus bandwidth    : 11.1949
 ```
 
-#### 16x H100 NVLink + 4x 400Gbps IB + all2all 
+#### 16x H100 NVLink + 4x 400Gbps IB + all2all
 
 ```
 #                                                              out-of-place                       in-place
@@ -242,4 +257,4 @@ kubectl delete -f nccl-tests-h100.yml
 
 ## 参考
 
-* [coreweave/nccl-tests](https://github.com/CoreWeave/nccl-tests)
+- [coreweave/nccl-tests](https://github.com/CoreWeave/nccl-tests)

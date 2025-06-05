@@ -1,0 +1,102 @@
+apiVersion: kubeflow.org/v2beta1
+kind: MPIJob
+metadata:
+  name: nccl-tests-nodes-roce
+spec:
+  slotsPerWorker: 8
+  launcherCreationPolicy: WaitForWorkersReady
+  runPolicy:
+    cleanPodPolicy: Running
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+        spec:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                    - gn001
+          containers:
+            - image: ghcr.io/coreweave/nccl-tests:12.2.2-cudnn8-devel-ubuntu20.04-nccl2.19.3-1-3e0fbc3
+              name: nccl
+              env:
+                - name: OMPI_ALLOW_RUN_AS_ROOT
+                  value: "1"
+                - name: OMPI_ALLOW_RUN_AS_ROOT_CONFIRM
+                  value: "1"
+              command: ["/bin/bash", "-c"]
+              args: [
+                  "mpirun \
+                  -np 16 \
+                  -bind-to none \
+                  -x LD_LIBRARY_PATH \
+                  -x NCCL_DEBUG=TRACE \
+                  -x NCCL_DEBUG_SUBSYS=ALL \
+                  -x NCCL_LAUNCH_MODE=GROUP \
+                  -x NCCL_IB_HCA=mlx5 \
+                  -x NCCL_PLUGIN_P2P=ucx \
+                  -x NCCL_IB_GID_INDEX=3 \
+                  -x NCCL_ALGO=Ring \
+                  -x NCCL_DEBUG=WARN \
+                  /opt/nccl_tests/build/all_reduce_perf -b 512M -e 8G -f 2 -g 1 \
+                  ",
+                ]
+              resources:
+                limits:
+                  cpu: 2
+                  memory: 128Mi
+          tolerations:
+            - operator: Exists
+              effect: NoSchedule
+          enableServiceLinks: false
+          automountServiceAccountToken: false
+    Worker:
+      replicas: 2
+      template:
+        metadata:
+          labels:
+            job: nccl-test
+          annotations:
+            # 需要根据实际情况修改value
+            k8s.v1.cni.cncf.io/networks: default/rdma-net-ipam
+        spec:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                    - gn001
+                    - gn002
+          containers:
+            - image: ghcr.io/coreweave/nccl-tests:12.2.2-cudnn8-devel-ubuntu20.04-nccl2.19.3-1-3e0fbc3
+              name: nccl
+              resources:
+                limits:
+                  cpu: 80
+                  memory: 100Gi
+                  nvidia.com/gpu: 8
+                  rdma/hca: 1
+              volumeMounts:
+                - mountPath: /dev/shm
+                  name: dshm
+              securityContext:
+                capabilities: 
+                  add: 
+                    - IPC_LOCK
+          volumes:
+            - emptyDir:
+                medium: Memory
+              name: dshm
+          tolerations:
+            - operator: Exists
+              effect: NoSchedule
+          enableServiceLinks: false
+          automountServiceAccountToken: false

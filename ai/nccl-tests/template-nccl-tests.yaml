@@ -1,9 +1,10 @@
 apiVersion: kubeflow.org/v2beta1
 kind: MPIJob
 metadata:
-  name: nccl-tests-h100
+  name: nccl-tests-single-node-gn001
 spec:
   slotsPerWorker: 8
+  launcherCreationPolicy: WaitForWorkersReady
   runPolicy:
     cleanPodPolicy: Running
   mpiReplicaSpecs:
@@ -11,64 +12,88 @@ spec:
       replicas: 1
       template:
         spec:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                    - gn001
           containers:
             - image: ghcr.io/coreweave/nccl-tests:12.2.2-cudnn8-devel-ubuntu20.04-nccl2.19.3-1-3e0fbc3
+              imagePullPolicy: Always
               name: nccl
               env:
                 - name: OMPI_ALLOW_RUN_AS_ROOT
                   value: "1"
                 - name: OMPI_ALLOW_RUN_AS_ROOT_CONFIRM
                   value: "1"
-              # Uncomment to be able to exec in to launcher pod for interactive testing
-              # command: ['sleep', '86400']
+              # command: ["sleep", "infinity"]
               command: ["/bin/bash", "-c"]
               args: [
                   "mpirun \
-                  -np 16 \ 
+                  -np 8 \
                   -bind-to none \
                   -x LD_LIBRARY_PATH \
                   -x NCCL_SOCKET_IFNAME=eth0 \
-                  -x NCCL_IB_HCA=mlx5_0:1,mlx5_1:1,mlx5_3:1,mlx5_4:1 \
+                  -x NCCL_IB_HCA=mlx5 \
                   -x NCCL_ALGO=Ring \
+                  -x NCCL_IB_QPS_PER_CONNECTION=4 \
+                  -x NCCL_CROSS_NIC=1 \
                   /opt/nccl_tests/build/all_reduce_perf -b 8 -e 8G -f 2 -g 1 \
                   ",
                 ]
-                # -x NCCL_IB_QPS_PER_CONNECTION=4 \
-                # -x NCCL_CROSS_NIC=1 \
-                # /opt/nccl_tests/build/all_reduce_perf -b 8 -e 8G -f 2 -g 1 \
-                # /opt/nccl_tests/build/alltoall_perf -b 8 -e 8G -f 2 -g 1 \
+                  # -x UCX_NET_DEVICES=all \
+                  # -x NCCL_NET=UCX \
+                  # -x UCX_TLS=all \
+                  # -x NCCL_DEBUG=INFO \
+                  # -x NCCL_DEBUG_SUBSYS=INIT,ENV,GRAPH \
+                  # -x NCCL_ALGO=Ring \
+                  # -x NCCL_IB_QPS_PER_CONNECTION=4 \
+                  # -x NCCL_CROSS_NIC=1 \
+              resources:
+                requests:
+                  cpu: 2
+                  memory: 128Mi
           tolerations:
             - operator: Exists
               effect: NoSchedule
           enableServiceLinks: false
           automountServiceAccountToken: false
     Worker:
-      replicas: 2
+      replicas: 1
       template:
         metadata:
           labels:
             job: nccl-test
         spec:
-          # affinity:
-          #   nodeAffinity:
-          #     requiredDuringSchedulingIgnoredDuringExecution:
-          #       nodeSelectorTerms:
-          #         - matchExpressions:
-          #           - key: kubernetes.io/hostname
-          #             operator: In
-          #             values:
-          #               - g0014
-          #               - g0016
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                    - gn001
           containers:
             - image: ghcr.io/coreweave/nccl-tests:12.2.2-cudnn8-devel-ubuntu20.04-nccl2.19.3-1-3e0fbc3
+              imagePullPolicy: Always
               name: nccl
               resources:
                 limits:
+                  cpu: 80
+                  memory: 100Gi
                   nvidia.com/gpu: 8
-                  rdma/hca: 1
               volumeMounts:
                 - mountPath: /dev/shm
                   name: dshm
+              securityContext:
+                capabilities: 
+                  add: 
+                    - IPC_LOCK
           volumes:
             - emptyDir:
                 medium: Memory
