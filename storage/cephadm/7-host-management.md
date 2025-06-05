@@ -56,9 +56,36 @@ No daemons reported
 # ceph orch rm bj1sn004
 ```
 
-如果主机离线且不可恢复，则可以从集群中直接移除
+如果主机离线并且不可恢复， 则可以从集群中移除
 
 ```bash
 # ceph orch host rm bj1sn004 --offline --force
 ```
+如果数据没有冗余则此操作造成数据丢失。另外，可能需要更新 service spec 文件以移除主机描述。
 
+# 维护模式
+
+
+## 进入维护模式
+
+确认主机停止不会影响数据可靠性
+
+```bash
+# ceph orch host ok-to-stop <hostname>
+```
+
+进入维护模式，则停止主机上所有守护进程
+1. 应用 noout 在指定主机上
+2. 停止主机上的守护进程
+3. 阻止主机上的服务开机自启动
+
+```bash
+# ceph orch host maintenance enter <hostname> [--force]
+```
+
+## 退出维护模式
+
+```bash
+# ceph orch host maintenace exit <hostname> 
+
+```
